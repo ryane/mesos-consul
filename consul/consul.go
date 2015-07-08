@@ -11,15 +11,15 @@ import (
 )
 
 type Consul struct {
-	agents		map[string]*consulapi.Client
-	config		*config.Config
+	agents map[string]*consulapi.Client
+	config *config.Config
 }
 
 //
 func NewConsul(c *config.Config) *Consul {
 	return &Consul{
-		agents:		make(map[string]*consulapi.Client),
-		config:		c,
+		agents: make(map[string]*consulapi.Client),
+		config: c,
 	}
 }
 
@@ -48,8 +48,8 @@ func (c *Consul) newAgent(address string) *consulapi.Client {
 
 	if !c.config.RegistrySSL.Verify {
 		log.Printf("disabled SSL verification")
-		config.HttpClient.Transport = &http.Transport {
-			TLSClientConfig: &tls.Config {
+		config.HttpClient.Transport = &http.Transport{
+			TLSClientConfig: &tls.Config{
 				InsecureSkipVerify: true,
 			},
 		}
@@ -88,4 +88,29 @@ func (r *Consul) Deregister(service *consulapi.AgentServiceRegistration) error {
 	}
 
 	return r.agents[service.Address].Agent().ServiceDeregister(service.ID)
+}
+
+func (r *Consul) Get(key string) (*consulapi.KVPair, error) {
+	address := "consul.service.consul"
+
+	if _, ok := r.agents[address]; !ok {
+		// Agent connection not saved. Connect.
+		r.agents[address] = r.newAgent(address)
+	}
+
+	kv, _, err := r.agents[address].KV().Get(key, nil)
+
+	return kv, err
+}
+
+func (r *Consul) Put(kvpair *consulapi.KVPair) error {
+	address := "consul.service.consul"
+
+	if _, ok := r.agents[address]; !ok {
+		// Agent connection not saved. Connect.
+		r.agents[address] = r.newAgent(address)
+	}
+
+	_, err := r.agents[address].KV().Put(kvpair, nil)
+	return err
 }
